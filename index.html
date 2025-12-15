@@ -36,7 +36,8 @@ button { margin: 5px }
 
 <script>
 /* ===== CẤU HÌNH ===== */
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxQRtmde0AGSQqLcjg1WO8ijQ3NDAKa5Mh7yOmdA0fSgHDGYgJ5E70dtrx2H-Xdz4NQ/exec";
+const GOOGLE_SHEET_URL =
+"https://script.google.com/macros/s/AKfycbxQRtmde0AGSQqLcjg1WO8ijQ3NDAKa5Mh7yOmdA0fSgHDGYgJ5E70dtrx2H-Xdz4NQ/exec";
 
 /* ===== DỮ LIỆU ===== */
 let variables = ["ID"];
@@ -46,7 +47,6 @@ let data = [];
 function addVariable() {
   const name = document.getElementById("varName").value.trim();
   if (!name || variables.includes(name)) return;
-
   variables.push(name);
   document.getElementById("varName").value = "";
   render();
@@ -61,7 +61,7 @@ function addRow() {
   render();
 }
 
-/* ===== RENDER TABLE ===== */
+/* ===== RENDER ===== */
 function render() {
   document.getElementById("varList").innerHTML =
     variables.map(v => `<li>${v}</li>`).join("");
@@ -83,19 +83,24 @@ function render() {
   });
 }
 
-/* ===== GỬI GOOGLE SHEET ===== */
+/* ===== GỬI GOOGLE SHEET (KHÔNG CORS) ===== */
 function submitAll() {
-  if (data.length === 0) return alert("Chưa có dữ liệu");
+  if (data.length === 0) {
+    alert("Chưa có dữ liệu");
+    return;
+  }
 
   data.forEach(row => {
     fetch(GOOGLE_SHEET_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         headers: variables,
         values: variables.map(v => row[v])
       })
-    });
+    })
+    .then(r => r.text())
+    .then(t => console.log("Server:", t))
+    .catch(e => console.error("Error:", e));
   });
 
   alert("Đã gửi toàn bộ dữ liệu sang Google Sheet");
