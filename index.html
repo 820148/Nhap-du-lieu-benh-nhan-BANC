@@ -10,6 +10,7 @@ td, th { border: 1px solid #444; padding: 5px }
 input { margin: 5px }
 button { margin: 5px }
 .section { border: 1px solid #aaa; padding: 10px; margin-bottom: 20px }
+iframe { display: none }
 </style>
 </head>
 
@@ -18,14 +19,14 @@ button { margin: 5px }
 <h1>SPSS-like Data Entry (HTML + Google Sheet)</h1>
 
 <div class="section">
-<h2>Variable View (Khai báo biến)</h2>
-<input id="varName" placeholder="Tên biến (vd: age)">
+<h2>Variable View</h2>
+<input id="varName" placeholder="Tên biến">
 <button onclick="addVariable()">Thêm biến</button>
 <ul id="varList"></ul>
 </div>
 
 <div class="section">
-<h2>Data View (Nhập dữ liệu)</h2>
+<h2>Data View</h2>
 <button onclick="addRow()">Thêm bệnh nhân</button>
 <table id="dataTable"></table>
 </div>
@@ -34,25 +35,23 @@ button { margin: 5px }
 <button onclick="submitAll()">Gửi sang Google Sheet</button>
 </div>
 
+<iframe name="hiddenFrame"></iframe>
+
 <script>
-/* ===== CẤU HÌNH ===== */
 const GOOGLE_SHEET_URL =
 "https://script.google.com/macros/s/AKfycbxQRtmde0AGSQqLcjg1WO8ijQ3NDAKa5Mh7yOmdA0fSgHDGYgJ5E70dtrx2H-Xdz4NQ/exec";
 
-/* ===== DỮ LIỆU ===== */
 let variables = ["ID"];
 let data = [];
 
-/* ===== VARIABLE VIEW ===== */
 function addVariable() {
-  const name = document.getElementById("varName").value.trim();
+  const name = varName.value.trim();
   if (!name || variables.includes(name)) return;
   variables.push(name);
-  document.getElementById("varName").value = "";
+  varName.value = "";
   render();
 }
 
-/* ===== DATA VIEW ===== */
 function addRow() {
   const row = {};
   variables.forEach(v => row[v] = "");
@@ -61,49 +60,50 @@ function addRow() {
   render();
 }
 
-/* ===== RENDER ===== */
 function render() {
-  document.getElementById("varList").innerHTML =
-    variables.map(v => `<li>${v}</li>`).join("");
+  varList.innerHTML = variables.map(v => `<li>${v}</li>`).join("");
+  dataTable.innerHTML = "";
 
-  const table = document.getElementById("dataTable");
-  table.innerHTML = "";
+  const h = dataTable.insertRow();
+  variables.forEach(v => h.insertCell().innerText = v);
 
-  const header = table.insertRow();
-  variables.forEach(v => header.insertCell().innerText = v);
-
-  data.forEach(row => {
-    const tr = table.insertRow();
+  data.forEach(r => {
+    const tr = dataTable.insertRow();
     variables.forEach(v => {
       const td = tr.insertCell();
       td.contentEditable = v !== "ID";
-      td.innerText = row[v];
-      td.oninput = () => row[v] = td.innerText;
+      td.innerText = r[v];
+      td.oninput = () => r[v] = td.innerText;
     });
   });
 }
 
-/* ===== GỬI GOOGLE SHEET (KHÔNG CORS) ===== */
+/* 🔴 CÁCH DUY NHẤT KHÔNG CORS */
 function submitAll() {
-  if (data.length === 0) {
-    alert("Chưa có dữ liệu");
-    return;
-  }
+  if (data.length === 0) return alert("Chưa có dữ liệu");
 
   data.forEach(row => {
-    fetch(GOOGLE_SHEET_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        headers: variables,
-        values: variables.map(v => row[v])
-      })
-    })
-    .then(r => r.text())
-    .then(t => console.log("Server:", t))
-    .catch(e => console.error("Error:", e));
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = GOOGLE_SHEET_URL;
+    form.target = "hiddenFrame";
+
+    const h = document.createElement("input");
+    h.name = "headers";
+    h.value = JSON.stringify(variables);
+
+    const v = document.createElement("input");
+    v.name = "values";
+    v.value = JSON.stringify(variables.map(x => row[x]));
+
+    form.appendChild(h);
+    form.appendChild(v);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
   });
 
-  alert("Đã gửi toàn bộ dữ liệu sang Google Sheet");
+  alert("Đã gửi dữ liệu sang Google Sheet");
 }
 </script>
 
