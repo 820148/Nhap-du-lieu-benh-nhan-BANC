@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>SPSS-like Data Entry</title>
+<style>
+body { font-family: Arial; margin: 20px }
+table { border-collapse: collapse; margin-top: 10px }
+td, th { border: 1px solid #444; padding: 5px }
+input { margin: 5px }
+button { margin: 5px }
+.section { border: 1px solid #aaa; padding: 10px; margin-bottom: 20px }
+</style>
+</head>
+
+<body>
+
+<h1>SPSS-like Data Entry (HTML + Google Sheet)</h1>
+
+<div class="section">
+<h2>Variable View (Khai báo biến)</h2>
+<input id="varName" placeholder="Tên biến (vd: age)">
+<button onclick="addVariable()">Thêm biến</button>
+<ul id="varList"></ul>
+</div>
+
+<div class="section">
+<h2>Data View (Nhập dữ liệu)</h2>
+<button onclick="addRow()">Thêm bệnh nhân</button>
+<table id="dataTable"></table>
+</div>
+
+<div class="section">
+<button onclick="submitAll()">Gửi sang Google Sheet</button>
+</div>
+
+<script>
+/* ===== CẤU HÌNH ===== */
+const GOOGLE_SHEET_URL = "PASTE_WEB_APP_URL_HERE";
+
+/* ===== DỮ LIỆU ===== */
+let variables = ["ID"];
+let data = [];
+
+/* ===== VARIABLE VIEW ===== */
+function addVariable() {
+  const name = document.getElementById("varName").value.trim();
+  if (!name || variables.includes(name)) return;
+
+  variables.push(name);
+  document.getElementById("varName").value = "";
+  render();
+}
+
+/* ===== DATA VIEW ===== */
+function addRow() {
+  const row = {};
+  variables.forEach(v => row[v] = "");
+  row.ID = data.length + 1;
+  data.push(row);
+  render();
+}
+
+/* ===== RENDER TABLE ===== */
+function render() {
+  document.getElementById("varList").innerHTML =
+    variables.map(v => `<li>${v}</li>`).join("");
+
+  const table = document.getElementById("dataTable");
+  table.innerHTML = "";
+
+  const header = table.insertRow();
+  variables.forEach(v => header.insertCell().innerText = v);
+
+  data.forEach(row => {
+    const tr = table.insertRow();
+    variables.forEach(v => {
+      const td = tr.insertCell();
+      td.contentEditable = v !== "ID";
+      td.innerText = row[v];
+      td.oninput = () => row[v] = td.innerText;
+    });
+  });
+}
+
+/* ===== GỬI GOOGLE SHEET ===== */
+function submitAll() {
+  if (data.length === 0) return alert("Chưa có dữ liệu");
+
+  data.forEach(row => {
+    fetch(GOOGLE_SHEET_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        headers: variables,
+        values: variables.map(v => row[v])
+      })
+    });
+  });
+
+  alert("Đã gửi toàn bộ dữ liệu sang Google Sheet");
+}
+</script>
+
+</body>
+</html>
